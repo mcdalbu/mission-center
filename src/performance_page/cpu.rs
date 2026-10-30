@@ -18,13 +18,15 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use std::cell::{Cell, OnceCell};
+use std::cell::{Cell, OnceCell, RefCell};
+use std::path::Path;
 
 use adw::subclass::prelude::*;
 use glib::{ParamSpec, Properties, Value};
 use gtk::{gio, glib, prelude::*};
 
 use super::{widgets::GraphWidget, PageExt};
+use super::cpu_presentation::{self, CoreInfo};
 use crate::{application::INTERVAL_STEP, i18n::*, settings};
 
 mod imp {
@@ -52,6 +54,8 @@ mod imp {
         summary_mode: Cell<bool>,
 
         pub graph_widgets: Cell<Vec<GraphWidget>>,
+        pub core_labels: RefCell<Vec<gtk::Label>>,
+        pub core_info: RefCell<Vec<CoreInfo>>,
 
         #[property(get = Self::infobar_content, type = Option < gtk::Widget >)]
         pub infobar_content: OnceCell<gtk::Box>,
@@ -89,6 +93,8 @@ mod imp {
                 summary_mode: Cell::new(false),
 
                 graph_widgets: Cell::new(Vec::new()),
+                core_labels: RefCell::new(Vec::new()),
+                core_info: RefCell::new(Vec::new()),
 
                 infobar_content: Default::default(),
                 utilization: Default::default(),
@@ -448,6 +454,14 @@ mod imp {
 
             this.graph_widgets.set(graph_widgets);
 
+            // Reuse the existing refresh cadence; no timer or privileged reader.
+            for (core, label) in this.core_info.borrow().iter().zip(this.core_labels.borrow().iter()) {
+                if label.is_mapped() {
+                    let khz = cpu_presentation::frequency_khz(Path::new("/sys/devices/system/cpu"), core.cpu);
+                    label.set_text(&cpu_presentation::core_label(core, khz));
+                }
+            }
+
             if let Some(utilization) = this.utilization.get() {
                 utilization.set_text(&format!(
                     "{}%",
@@ -518,7 +532,7 @@ mod imp {
                 this.energy_performance_preference_label.get(),
             ) {
                 if let Some(governor) = dynamic_cpu_info.energy_performance_preference.as_ref() {
-                    energy_performance_preference.set_text(governor.as_ref());
+                    energy_performance_preference.set_text(&cpu_presentation::format_epp(governor.as_ref()));
                 } else {
                     energy_performance_preference.set_visible(false);
                     energy_performance_preference_label.set_visible(false);
@@ -706,6 +720,10 @@ mod imp {
                 None
             });
 
+            let cores = cpu_presentation::core_info(
+                Path::new("/sys/devices/system/cpu"),
+                Path::new("/sys/bus/event_source/devices"), cpu_count);
+            self.core_labels.borrow_mut().clear();
             for i in 0..cpu_count {
                 let row_idx = i / col_count;
                 let col_idx = i % col_count;
@@ -748,15 +766,24 @@ mod imp {
                 graph_widgets[graph_widget_index].set_base_color(&base_color);
                 graph_widgets[graph_widget_index]
                     .set_visible(graph_selection == GRAPH_SELECTION_ALL);
-                self.usage_graphs.attach(
-                    &graph_widgets[graph_widget_index],
-                    col_idx as i32,
-                    row_idx as i32,
-                    1,
-                    1,
-                );
+                let graph = &graph_widgets[graph_widget_index];
+                let overlay = gtk::Overlay::new();
+                overlay.set_child(Some(graph));
+                graph.bind_property("visible", &overlay, "visible").sync_create().build();
+                let label = gtk::Label::new(Some(&cpu_presentation::core_label(&cores[i], None)));
+                label.set_halign(gtk::Align::End);
+                label.set_valign(gtk::Align::Start);
+                label.set_margin_top(5);
+                label.set_margin_end(5);
+                label.set_can_target(false);
+                label.add_css_class("cpu-core-badge");
+                label.add_css_class("numeric");
+                overlay.add_overlay(&label);
+                self.core_labels.borrow_mut().push(label);
+                self.usage_graphs.attach(&overlay, col_idx as i32, row_idx as i32, 1, 1);
             }
 
+            *self.core_info.borrow_mut() = cores;
             self.graph_widgets.set(graph_widgets);
         }
 

@@ -40,6 +40,7 @@ use crate::{
 };
 
 mod cpu;
+mod cpu_presentation;
 mod disk;
 mod fan;
 mod gpu;

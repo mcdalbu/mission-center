@@ -82,3 +82,6 @@ compile_commands.json
 /subprojects/packagecache
 _build
 BUILD
+
+# Local RPM source/vendor and build artifacts
+_rpm/

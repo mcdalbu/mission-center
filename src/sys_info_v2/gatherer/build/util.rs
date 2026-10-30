@@ -56,20 +56,18 @@ pub fn download_file(
         return Ok(output_path);
     }
 
-    let response = ureq::get(url).call()?;
-
-    if response.status() != 200 {
-        return Err(format!(
-            "Failed to download {}. HTTP status code {} {}",
-            url,
-            response.status(),
-            response.status_text()
-        )
-        .into());
-    }
-
+    // RPM builds provide the pinned native sources locally; never fall back
+    // to the network when an offline source cache is explicitly selected.
     let mut content = Vec::new();
-    response.into_reader().read_to_end(&mut content)?;
+    if let Some(cache) = std::env::var_os("MC_SOURCE_CACHE") {
+        content = std::fs::read(std::path::PathBuf::from(cache).join(file_name))?;
+    } else {
+        let response = ureq::get(url).call()?;
+        if response.status() != 200 {
+            return Err(format!("Failed to download {}: {}", url, response.status()).into());
+        }
+        response.into_reader().read_to_end(&mut content)?;
+    }
 
     let mut sha256 = cargo_util::Sha256::new();
     sha256.update(&content);

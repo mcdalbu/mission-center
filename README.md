@@ -1,6 +1,10 @@
 <img align="left"  src="https://gitlab.com/mission-center-devs/mission-center/-/raw/main/data/icons/hicolor/scalable/apps/io.missioncenter.MissionCenter.svg" alt="drawing" width="64"/> 
 
-# Mission Center
+# Mission Center — CPU details fork
+
+This fork adds native EPP names and per-CPU frequency/P-core/E-core badges.
+See [Fedora RPM build and installation](packaging/README.md).
+It follows the supplied Slimbook mirror, version 0.6.1.
 
 Monitor your CPU, Memory, Disk, Network and GPU usage with [Mission Center](https://missioncenter.io/)
 
