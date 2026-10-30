@@ -1,3 +1,8 @@
+> **Superseded — wrong upstream base.** This repository uses Slimbook's old
+> 0.6.1 mirror. The corrected fork is based on the official GitLab project,
+> version 1.2.0: [mission-center-custom](https://github.com/mcdalbu/mission-center-custom).
+> Use its [Fedora RPM release](https://github.com/mcdalbu/mission-center-custom/releases/tag/v1.2.0-corelabels.1).
+
 <img align="left"  src="https://gitlab.com/mission-center-devs/mission-center/-/raw/main/data/icons/hicolor/scalable/apps/io.missioncenter.MissionCenter.svg" alt="drawing" width="64"/> 
 
 # Mission Center — CPU details fork
